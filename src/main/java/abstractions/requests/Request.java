@@ -1,3 +1,3 @@
-package Abstractions.Requests;
+package abstractions.requests;
 
 public interface Request<TResponse> {}

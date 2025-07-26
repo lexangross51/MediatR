@@ -1,5 +1,5 @@
-package Abstractions.RequestHandlers;
+package abstractions.requestHandlers;
 
-import Abstractions.Requests.Command;
+import abstractions.requests.Command;
 
 public interface CommandHandler<TCommand extends Command> extends RequestHandler<TCommand, Void> {}

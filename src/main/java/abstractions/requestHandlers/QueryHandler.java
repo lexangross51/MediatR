@@ -1,6 +1,6 @@
-package Abstractions.RequestHandlers;
+package abstractions.requestHandlers;
 
-import Abstractions.Requests.Query;
+import abstractions.requests.Query;
 
 public interface QueryHandler<TQuery extends Query<TResponse>, TResponse>
         extends RequestHandler<TQuery, TResponse> {}

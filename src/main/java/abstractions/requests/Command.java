@@ -1,3 +1,3 @@
-package Abstractions.Requests;
+package abstractions.requests;
 
 public interface Command extends Request<Void> {}

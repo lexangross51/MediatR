@@ -1,5 +1,5 @@
-package Abstractions.RequestHandlers;
+package abstractions.requestHandlers;
 
-import Abstractions.Requests.Event;
+import abstractions.requests.Event;
 
 public interface EventHandler<TEvent extends Event> extends RequestHandler<TEvent, Void> {}

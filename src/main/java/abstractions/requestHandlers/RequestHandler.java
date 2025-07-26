@@ -1,5 +1,5 @@
-package Abstractions.RequestHandlers;
+package abstractions.requestHandlers;
 
-import Abstractions.Requests.Request;
+import abstractions.requests.Request;
 
 public interface RequestHandler<TRequest extends Request<TResponse>, TResponse> {}

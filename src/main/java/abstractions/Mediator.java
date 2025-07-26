@@ -1,7 +1,7 @@
-package Abstractions;
+package abstractions;
 
-import Abstractions.RequestHandlers.RequestHandler;
-import Abstractions.Requests.Request;
+import abstractions.requestHandlers.RequestHandler;
+import abstractions.requests.Request;
 
 public interface Mediator {
     <TRequest extends Request<TResponse>, TResponse> void registerHandler(

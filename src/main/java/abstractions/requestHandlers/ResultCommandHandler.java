@@ -1,7 +1,7 @@
-package Abstractions.RequestHandlers;
+package abstractions.requestHandlers;
 
 
-import Abstractions.Requests.ResultCommand;
+import abstractions.requests.ResultCommand;
 
 public interface ResultCommandHandler<TCommand extends ResultCommand<TResponse>, TResponse>
         extends RequestHandler<TCommand, TResponse> {}

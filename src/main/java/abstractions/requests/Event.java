@@ -1,4 +1,4 @@
-package Abstractions.Requests;
+package abstractions.requests;
 
 import java.time.LocalDate;
 
