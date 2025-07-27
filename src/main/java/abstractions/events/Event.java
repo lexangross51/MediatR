@@ -1,8 +1,8 @@
-package abstractions.requests;
+package abstractions.events;
 
 import java.time.LocalDate;
 
-public interface Event extends Request<Void> {
+public interface Event {
     default LocalDate getOccurredAt() {
         return LocalDate.now();
     }
