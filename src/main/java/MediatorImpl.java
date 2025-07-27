@@ -7,18 +7,19 @@ import abstractions.requests.Request;
 import abstractions.requests.RequestHandler;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.*;
 
 class MediatorImpl implements Mediator {
     private final ConcurrentMap<Class<?>, RequestHandler<?, ?>> commandHandlers;
     private final ConcurrentMap<Class<?>, RequestHandler<?, ?>> queryHandlers;
     private final ConcurrentMap<Class<?>, List<EventHandler<?>>> eventHandlers;
+    private final Executor executor;
 
     public MediatorImpl() {
         this.commandHandlers = new ConcurrentHashMap<>();
         this.queryHandlers = new ConcurrentHashMap<>();
         this.eventHandlers = new ConcurrentHashMap<>();
+        this.executor = Executors.newCachedThreadPool();
     }
 
     @Override
@@ -77,6 +78,11 @@ class MediatorImpl implements Mediator {
     }
 
     @Override
+    public <TRequest extends Request<TResponse>, TResponse> CompletableFuture<TResponse> sendAsync(TRequest request) {
+        return CompletableFuture.supplyAsync(() -> send(request), this.executor);
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public <TEvent extends Event> void publish(TEvent event) {
         List<EventHandler<?>> handlers = this.eventHandlers.get(event.getClass());
@@ -92,5 +98,23 @@ class MediatorImpl implements Mediator {
 
             ((EventHandler<TEvent>)handler).handle(event);
         });
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <TEvent extends Event> CompletableFuture<Void> publishAsync(TEvent event) {
+        List<EventHandler<?>> handlers = eventHandlers.get(event.getClass());
+
+        if (handlers == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        var futures = new ArrayList<CompletableFuture<Void>>();
+
+        for (var handler : handlers) {
+            futures.add(CompletableFuture.runAsync(() -> ((EventHandler<TEvent>)handler).handle(event), executor));
+        }
+
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
     }
 }
