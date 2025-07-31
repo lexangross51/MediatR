@@ -1,10 +1,11 @@
 package abstractions;
 
+import abstractions.behaviors.EventPipelineBehavior;
+import abstractions.behaviors.RequestPipelineBehavior;
 import abstractions.events.Event;
 import abstractions.events.EventHandler;
 import abstractions.requests.RequestHandler;
 import abstractions.requests.Request;
-
 import java.util.concurrent.CompletableFuture;
 
 public interface Mediator {
@@ -21,4 +22,9 @@ public interface Mediator {
     <TEvent extends Event> void publish(TEvent event);
 
     <TEvent extends Event> CompletableFuture<Void> publishAsync(TEvent event);
+
+    <TRequest extends Request<TResponse>, TResponse> void registerRequestPipelineBehavior(
+            RequestPipelineBehavior<TRequest, TResponse> behavior);
+
+    <TEvent extends Event> void registerEventPipelineBehavior(EventPipelineBehavior<TEvent> behavior);
 }

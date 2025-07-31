@@ -94,12 +94,14 @@ public class MediatorImplTest {
     }
 
     @Test
+    @SuppressWarnings("DataFlowIssue")
     void shouldNotAllowNullRequestInSend() {
         assertThatThrownBy(() -> mediator.send(null))
                 .isInstanceOf(NullPointerException.class);
     }
 
     @Test
+    @SuppressWarnings("DataFlowIssue")
     void shouldNotAllowNullEventInPublish() {
         assertThatThrownBy(() -> mediator.publish(null))
                 .isInstanceOf(NullPointerException.class);
