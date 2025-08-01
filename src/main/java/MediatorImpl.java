@@ -69,12 +69,12 @@ class MediatorImpl implements Mediator {
     @SuppressWarnings("unchecked")
     public <TRequest extends Request<TResponse>, TResponse> TResponse send(TRequest request) {
         RequestHandler<TRequest, TResponse> handler;
-        Class<?> requestType = request.getClass();
+        Class<?> requestClass = request.getClass();
 
         if (request instanceof ResultCommand) {
-            handler = (RequestHandler<TRequest, TResponse>)this.commandHandlers.get(requestType);
+            handler = (RequestHandler<TRequest, TResponse>)this.commandHandlers.get(requestClass);
         } else if (request instanceof Query) {
-            handler = (RequestHandler<TRequest, TResponse>)this.queryHandlers.get(requestType);
+            handler = (RequestHandler<TRequest, TResponse>)this.queryHandlers.get(requestClass);
         } else {
             throw new RuntimeException("Unknown request type");
         }
@@ -89,7 +89,7 @@ class MediatorImpl implements Mediator {
         while (it.hasPrevious()) {
             RegisteredRequestBehavior rb = it.previous();
 
-            if (rb.requestClass == null || rb.requestClass.isAssignableFrom(requestType)) {
+            if (rb.requestClass == null || rb.requestClass.isAssignableFrom(requestClass)) {
                 current = wrapRequestHandler(rb.behavior, current);
             }
         }
@@ -102,7 +102,7 @@ class MediatorImpl implements Mediator {
             RequestPipelineBehavior<?, ?> raw,
             RequestHandler<TRequest, TResponse> next) {
         return request -> {
-            var typed = (RequestPipelineBehavior<TRequest, TResponse>) raw;
+            var typed = (RequestPipelineBehavior<TRequest, TResponse>)raw;
             return typed.handle(request, next);
         };
     }
@@ -115,7 +115,8 @@ class MediatorImpl implements Mediator {
     @Override
     @SuppressWarnings("unchecked")
     public <TEvent extends Event> void publish(TEvent event) {
-        List<EventHandler<?>> handlers = this.eventHandlers.get(event.getClass());
+        Class<?> eventClass = event.getClass();
+        List<EventHandler<?>> handlers = this.eventHandlers.get(eventClass);
 
         if (handlers == null) {
             return;
@@ -130,15 +131,14 @@ class MediatorImpl implements Mediator {
             ListIterator<RegisteredEventBehavior> it = this.eventBehaviors.listIterator(this.eventBehaviors.size());
 
             while (it.hasPrevious()) {
-                RegisteredEventBehavior rb = it.previous();
+                RegisteredEventBehavior eb = it.previous();
 
-                if (rb.eventClass == null || rb.eventClass.isAssignableFrom(event.getClass())) {
-                    current = wrapEventHandler(rb.behavior, current);
+                if (eb.eventClass == null || eb.eventClass.isAssignableFrom(eventClass)) {
+                    current = wrapEventHandler(eb.behavior, current);
                 }
             }
 
-
-            ((EventHandler<TEvent>)handler).handle(event);
+            current.handle(event);
         });
     }
 
@@ -147,7 +147,7 @@ class MediatorImpl implements Mediator {
             EventPipelineBehavior<?> raw,
             EventHandler<TEvent> next) {
         return event -> {
-            var typed = (EventPipelineBehavior<TEvent>) raw;
+            var typed = (EventPipelineBehavior<TEvent>)raw;
             typed.handle(event, next);
         };
     }
@@ -164,9 +164,9 @@ class MediatorImpl implements Mediator {
         var futures = new ArrayList<CompletableFuture<Void>>();
 
         for (var rawHandler : handlers) {
-            EventHandler<TEvent> current = (EventHandler<TEvent>) rawHandler;
-
+            var current = (EventHandler<TEvent>)rawHandler;
             ListIterator<RegisteredEventBehavior> it = this.eventBehaviors.listIterator(this.eventBehaviors.size());
+
             while (it.hasPrevious()) {
                 RegisteredEventBehavior rb = it.previous();
 
@@ -216,9 +216,9 @@ class MediatorImpl implements Mediator {
             if (type instanceof ParameterizedType pt &&
                     pt.getRawType() instanceof Class raw &&
                     EventPipelineBehavior.class.isAssignableFrom(raw)){
-                Type requestType = pt.getActualTypeArguments()[0];
+                Type eventType = pt.getActualTypeArguments()[0];
 
-                if (requestType instanceof Class<?> eventClass &&
+                if (eventType instanceof Class eventClass &&
                         !eventClass.equals(Event.class)) {
                     this.eventBehaviors.add(new RegisteredEventBehavior(eventClass, behavior));
                     return;
