@@ -83,28 +83,7 @@ class MediatorImpl implements Mediator {
             throw new IllegalArgumentException("No handler registered");
         }
 
-        RequestHandler<TRequest, TResponse> current = handler;
-        ListIterator<RegisteredRequestBehavior> it = this.requestBehaviors.listIterator(this.requestBehaviors.size());
-
-        while (it.hasPrevious()) {
-            RegisteredRequestBehavior rb = it.previous();
-
-            if (rb.requestClass == null || rb.requestClass.isAssignableFrom(requestClass)) {
-                current = wrapRequestHandler(rb.behavior, current);
-            }
-        }
-
-        return current.handle(request);
-    }
-
-    @SuppressWarnings("unchecked")
-    private <TRequest extends Request<TResponse>, TResponse> RequestHandler<TRequest, TResponse> wrapRequestHandler(
-            RequestPipelineBehavior<?, ?> raw,
-            RequestHandler<TRequest, TResponse> next) {
-        return request -> {
-            var typed = (RequestPipelineBehavior<TRequest, TResponse>)raw;
-            return typed.handle(request, next);
-        };
+        return buildRequestPipelineChain(request, handler).handle(request);
     }
 
     @Override
@@ -122,34 +101,8 @@ class MediatorImpl implements Mediator {
             return;
         }
 
-        handlers.forEach(handler -> {
-            if (handler == null) {
-                throw new IllegalArgumentException("Unknown request type");
-            }
-
-            var current = (EventHandler<TEvent>)handler;
-            ListIterator<RegisteredEventBehavior> it = this.eventBehaviors.listIterator(this.eventBehaviors.size());
-
-            while (it.hasPrevious()) {
-                RegisteredEventBehavior eb = it.previous();
-
-                if (eb.eventClass == null || eb.eventClass.isAssignableFrom(eventClass)) {
-                    current = wrapEventHandler(eb.behavior, current);
-                }
-            }
-
-            current.handle(event);
-        });
-    }
-
-    @SuppressWarnings("unchecked")
-    private <TEvent extends Event> EventHandler<TEvent> wrapEventHandler(
-            EventPipelineBehavior<?> raw,
-            EventHandler<TEvent> next) {
-        return event -> {
-            var typed = (EventPipelineBehavior<TEvent>)raw;
-            typed.handle(event, next);
-        };
+        handlers.forEach(handler
+                -> buildEventPipelineChain(event, (EventHandler<TEvent>)handler).handle(event));
     }
 
     @Override
@@ -163,19 +116,8 @@ class MediatorImpl implements Mediator {
 
         var futures = new ArrayList<CompletableFuture<Void>>();
 
-        for (var rawHandler : handlers) {
-            var current = (EventHandler<TEvent>)rawHandler;
-            ListIterator<RegisteredEventBehavior> it = this.eventBehaviors.listIterator(this.eventBehaviors.size());
-
-            while (it.hasPrevious()) {
-                RegisteredEventBehavior rb = it.previous();
-
-                if (rb.eventClass == null || rb.eventClass.isAssignableFrom(event.getClass())) {
-                    current = wrapEventHandler(rb.behavior, current);
-                }
-            }
-
-            var finalCurrent = current;
+        for (var handler : handlers) {
+            EventHandler<TEvent> finalCurrent = buildEventPipelineChain(event, (EventHandler<TEvent>) handler);
             futures.add(CompletableFuture.runAsync(() -> finalCurrent.handle(event), executor));
         }
 
@@ -215,7 +157,7 @@ class MediatorImpl implements Mediator {
         for (var type : genericInterfaces) {
             if (type instanceof ParameterizedType pt &&
                     pt.getRawType() instanceof Class raw &&
-                    EventPipelineBehavior.class.isAssignableFrom(raw)){
+                    EventPipelineBehavior.class.isAssignableFrom(raw)) {
                 Type eventType = pt.getActualTypeArguments()[0];
 
                 if (eventType instanceof Class eventClass &&
@@ -227,6 +169,57 @@ class MediatorImpl implements Mediator {
         }
 
         this.eventBehaviors.add(new RegisteredEventBehavior(null, behavior));
+    }
+
+    @SuppressWarnings("unchecked")
+    private <TRequest extends Request<TResponse>, TResponse> RequestHandler<TRequest, TResponse> wrapRequestHandler(
+            RequestPipelineBehavior<?, ?> raw,
+            RequestHandler<TRequest, TResponse> next) {
+        return request -> {
+            var typed = (RequestPipelineBehavior<TRequest, TResponse>)raw;
+            return typed.handle(request, next);
+        };
+    }
+
+    private <TRequest extends Request<TResponse>, TResponse> RequestHandler<TRequest, TResponse>
+        buildRequestPipelineChain(TRequest request, RequestHandler<TRequest, TResponse> handler) {
+        RequestHandler<TRequest, TResponse> current = handler;
+        ListIterator<RegisteredRequestBehavior> it = this.requestBehaviors.listIterator(this.requestBehaviors.size());
+
+        while (it.hasPrevious()) {
+            RegisteredRequestBehavior rb = it.previous();
+
+            if (rb.requestClass == null || rb.requestClass.isAssignableFrom(request.getClass())) {
+                current = wrapRequestHandler(rb.behavior, current);
+            }
+        }
+
+        return current;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <TEvent extends Event> EventHandler<TEvent> wrapEventHandler(
+            EventPipelineBehavior<?> raw,
+            EventHandler<TEvent> next) {
+        return event -> {
+            var typed = (EventPipelineBehavior<TEvent>)raw;
+            typed.handle(event, next);
+        };
+    }
+
+    private <TEvent extends Event> EventHandler<TEvent> buildEventPipelineChain(TEvent event, EventHandler<TEvent> handler) {
+        var current = handler;
+        ListIterator<RegisteredEventBehavior> it = this.eventBehaviors.listIterator(this.eventBehaviors.size());
+
+        while (it.hasPrevious()) {
+            RegisteredEventBehavior eb = it.previous();
+
+            if (eb.eventClass == null || eb.eventClass.isAssignableFrom(event.getClass())) {
+                current = wrapEventHandler(eb.behavior, current);
+            }
+        }
+
+        return current;
     }
 
     private record RegisteredRequestBehavior(Class<?> requestClass, RequestPipelineBehavior<?, ?> behavior) {}
